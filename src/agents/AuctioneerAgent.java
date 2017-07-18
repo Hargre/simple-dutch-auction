@@ -24,4 +24,16 @@ public class AuctioneerAgent extends Agent {
 			ex.printStackTrace();
 		}
 	}
+
+	@Override
+	protected void takeDown() {
+		try {
+			System.out.println("Terminating auctioneer [" + getAID().getLocalName() + "]...");
+			DFService.deregister(this);
+		} catch (FIPAException ex) {
+			ex.printStackTrace();
+		}
+	}
+	
+	
 }
