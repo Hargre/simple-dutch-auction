@@ -73,6 +73,7 @@ public class AuctioneerAgent extends Agent {
 			registerDefaultTransition("searching for buyers", "inform buyers");
 			registerDefaultTransition("inform buyers", "ending auction");
 		}
+		
 		/*
 		 * Looks for existing buyers so the auction can start.
 		 */
