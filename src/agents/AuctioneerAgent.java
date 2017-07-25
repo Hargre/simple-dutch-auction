@@ -9,8 +9,10 @@ import jade.core.behaviours.FSMBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
+import jade.domain.FIPANames;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.lang.acl.ACLMessage;
 
 public class AuctioneerAgent extends Agent {
 	private static final long serialVersionUID = 667090917660533415L;
@@ -55,6 +57,7 @@ public class AuctioneerAgent extends Agent {
 			buyers = new ArrayList<>();
 			
 			registerFirstState(new SearchBuyersBehaviour(), "searching for buyers");
+			registerState(new InformBuyersBehaviour(), "inform buyers");
 			
 			/* Empty state only to simulate transition. 
 			 * Will be removed when proper end states are implemented.
@@ -67,7 +70,8 @@ public class AuctioneerAgent extends Agent {
 				}
 			}, "ending auction");
 			
-			registerDefaultTransition("searching for buyers", "ending auction");
+			registerDefaultTransition("searching for buyers", "inform buyers");
+			registerDefaultTransition("inform buyers", "ending auction");
 		}
 		/*
 		 * Looks for existing buyers so the auction can start.
@@ -97,6 +101,28 @@ public class AuctioneerAgent extends Agent {
 					ex.printStackTrace();
 				}
 			}		
+		}
+		
+		/*
+		 * Informs existing buyers that the auction is about to begin.
+		 */
+		private class InformBuyersBehaviour extends OneShotBehaviour {
+			private static final long serialVersionUID = -4608982946670101683L;
+
+			@Override
+			public void action() {
+				ACLMessage message = new ACLMessage(ACLMessage.INFORM);
+				message.setProtocol(FIPANames.InteractionProtocol.FIPA_DUTCH_AUCTION);
+				message.setContent("begin-auction");
+				
+				for (AID buyer : buyers) {
+					message.addReceiver(buyer);
+				}
+				myAgent.send(message);
+				
+				System.out.println("The auction is about to begin...");
+			}
+			
 		}
 	}
 }
