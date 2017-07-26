@@ -78,9 +78,14 @@ public class AuctioneerAgent extends Agent {
 	 */
 	private class AuctioneerBehaviour extends FSMBehaviour {
 		private static final long serialVersionUID = -7791885794766458598L;
+		
+		private double currentPrice;
+		private double reductionRate;
 		private List<AID> buyers;
 		
 		public AuctioneerBehaviour() {
+			currentPrice = initialPrice;
+			reductionRate = (initialPrice - reservePrice) * 0.1;
 			buyers = new ArrayList<>();
 			
 			registerFirstState(new SearchBuyersBehaviour(), "searching for buyers");
@@ -99,7 +104,8 @@ public class AuctioneerAgent extends Agent {
 			}, "ending auction");
 			
 			registerDefaultTransition("searching for buyers", "inform buyers");
-			registerDefaultTransition("inform buyers", "ending auction");
+			registerDefaultTransition("inform buyers", "call for proposal");
+			registerDefaultTransition("call for proposal", "ending auction");
 		}
 		
 		/*
@@ -163,7 +169,13 @@ public class AuctioneerAgent extends Agent {
 			public void action() {
 				ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
 				cfp.setProtocol(FIPANames.InteractionProtocol.FIPA_DUTCH_AUCTION);
+				cfp.setContent(Double.toString(currentPrice));
 				
+				for (AID buyer : buyers) {
+					cfp.addReceiver(buyer);
+					System.out.println("Sending CFP to [" + buyer.getLocalName() +"]");
+				}
+				myAgent.send(cfp);
 			}
 		}
 	}
