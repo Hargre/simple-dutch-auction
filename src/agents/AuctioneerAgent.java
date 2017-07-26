@@ -16,6 +16,10 @@ import jade.lang.acl.ACLMessage;
 
 public class AuctioneerAgent extends Agent {
 	private static final long serialVersionUID = 667090917660533415L;
+	private static final double RESERVE_RATE = 0.4;
+	
+	private double initialPrice;
+	private double reservePrice;
 	
 	protected void setup() {
 		DFAgentDescription auctioneerDescription = new DFAgentDescription();
@@ -32,6 +36,8 @@ public class AuctioneerAgent extends Agent {
 			ex.printStackTrace();
 		}
 		
+		getInitialPrice();
+		
 		addBehaviour(new AuctioneerBehaviour());
 	}
 
@@ -43,6 +49,27 @@ public class AuctioneerAgent extends Agent {
 		} catch (FIPAException ex) {
 			ex.printStackTrace();
 		}
+	}
+	
+	private void getInitialPrice() {
+		Object args[] = getArguments();
+		
+		if (args != null && args.length >= 1) {
+			try {
+				initialPrice = Double.parseDouble(args[0].toString());
+				setReservePrice();
+			} catch (NumberFormatException ex) {
+				System.out.println("Please type the initial price for the auction, in decimal form.");
+				doDelete();
+			}
+		} else {
+			System.out.println("Initial price not determined, terminating agent...");
+			doDelete();
+		}
+	}
+	
+	private void setReservePrice() {
+		reservePrice = initialPrice * RESERVE_RATE;
 	}
 	
 	/*
@@ -58,6 +85,7 @@ public class AuctioneerAgent extends Agent {
 			
 			registerFirstState(new SearchBuyersBehaviour(), "searching for buyers");
 			registerState(new InformBuyersBehaviour(), "inform buyers");
+			registerState(new CallBuyersBehaviour(), "call for proposal");
 			
 			/* Empty state only to simulate transition. 
 			 * Will be removed when proper end states are implemented.
@@ -123,7 +151,20 @@ public class AuctioneerAgent extends Agent {
 				
 				System.out.println("The auction is about to begin...");
 			}
-			
+		}
+		
+		/*
+		 * Sends a call for proposal (CFP) to existing buyers.
+		 */
+		private class CallBuyersBehaviour extends OneShotBehaviour {
+			private static final long serialVersionUID = 4938234929644296938L;
+
+			@Override
+			public void action() {
+				ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+				cfp.setProtocol(FIPANames.InteractionProtocol.FIPA_DUTCH_AUCTION);
+				
+			}
 		}
 	}
 }
