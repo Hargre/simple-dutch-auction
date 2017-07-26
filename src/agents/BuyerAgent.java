@@ -14,6 +14,8 @@ import jade.lang.acl.MessageTemplate;
 public class BuyerAgent extends Agent {
 	private static final long serialVersionUID = 76034717775332120L;
 	
+	private double priceToBuy;
+	
 	protected void setup() {
 		DFAgentDescription buyerDescription = new DFAgentDescription();
 		buyerDescription.setName(getAID());
@@ -29,6 +31,8 @@ public class BuyerAgent extends Agent {
 			ex.printStackTrace();
 		}
 		
+		getPriceToBuy();
+		
 		addBehaviour(new BuyerBehaviour());
 	}
 
@@ -39,6 +43,22 @@ public class BuyerAgent extends Agent {
 			DFService.deregister(this);
 		} catch (FIPAException ex) {
 			ex.printStackTrace();
+		}
+	}
+	
+	private void getPriceToBuy() {
+		Object args[] = getArguments();
+		
+		if (args != null && args.length >= 1) {
+			try {
+				priceToBuy = Double.parseDouble(args[0].toString());
+			} catch (NumberFormatException ex) {
+				System.out.println("Please type the interested price for the auction, in decimal form.");
+				doDelete();
+			}
+		} else {
+			System.out.println("Buying price not determined, terminating agent...");
+			doDelete();
 		}
 	}
 	
