@@ -101,6 +101,7 @@ public class AuctioneerAgent extends Agent {
 			registerState(new InformBuyersBehaviour(), "inform buyers");
 			registerState(new CallBuyersBehaviour(), "call for proposal");
 			registerState(new ReceiveProposalsBehaviour(), "receiving proposals");
+			registerState(new AcceptProposalBehaviour(), "accepting proposal");
 			
 			/* Empty state only to simulate transition. 
 			 * Will be removed when proper end states are implemented.
@@ -117,7 +118,8 @@ public class AuctioneerAgent extends Agent {
 			registerDefaultTransition("inform buyers", "call for proposal");
 			registerDefaultTransition("call for proposal", "receiving proposals");
 			registerTransition("receiving proposals", "call for proposal", noWinner);
-			registerTransition("receiving proposals", "ending auction", hasWinner);
+			registerTransition("receiving proposals", "accepting proposal", hasWinner);
+			registerDefaultTransition("accepting proposal", "ending auction");
 		}
 		
 		/*
@@ -238,6 +240,32 @@ public class AuctioneerAgent extends Agent {
 			public int onEnd() {
 				return transitionStatus;
 			}
+		}
+		
+		/*
+		 * Informs the winner of the auction and rejects all other proposals.
+		 */
+		private class AcceptProposalBehaviour extends OneShotBehaviour {
+			private static final long serialVersionUID = 4836575695515077753L;
+
+			@Override
+			public void action() {
+				// Inform the winner
+				ACLMessage acceptMessage = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+				acceptMessage.setProtocol(FIPANames.InteractionProtocol.FIPA_DUTCH_AUCTION);
+				acceptMessage.addReceiver(winner);
+				myAgent.send(acceptMessage);
+				
+				
+				// Inform the ones who lost due to late response
+				ACLMessage rejectMessage = new ACLMessage(ACLMessage.REJECT_PROPOSAL);
+				rejectMessage.setProtocol(FIPANames.InteractionProtocol.FIPA_DUTCH_AUCTION);
+				for (AID loser : losers) {
+					rejectMessage.addReceiver(loser);
+				}
+				myAgent.send(rejectMessage);
+			}
+			
 		}
 	}
 }
