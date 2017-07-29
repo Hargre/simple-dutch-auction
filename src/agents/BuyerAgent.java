@@ -145,7 +145,7 @@ public class BuyerAgent extends Agent {
 					
 					if (receivedMessage.getPerformative() == ACLMessage.CFP) {
 						double price = Double.parseDouble(receivedMessage.getContent());
-						System.out.println("Agent [" + getAID().getLocalName() + "] received"
+						System.out.println("Agent [" + getAID().getLocalName() + "] received "
 								+ "CFP with price " + Double.toString(price));
 						
 						// Value in range; send proposal

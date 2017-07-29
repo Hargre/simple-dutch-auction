@@ -5,6 +5,7 @@ import java.util.List;
 
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.FSMBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.domain.DFService;
@@ -13,6 +14,7 @@ import jade.domain.FIPANames;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
+import jade.lang.acl.MessageTemplate;
 
 public class AuctioneerAgent extends Agent {
 	private static final long serialVersionUID = 667090917660533415L;
@@ -79,18 +81,26 @@ public class AuctioneerAgent extends Agent {
 	private class AuctioneerBehaviour extends FSMBehaviour {
 		private static final long serialVersionUID = -7791885794766458598L;
 		
+		// Constants for transition states
+		private final int noWinner = 0;
+		private final int hasWinner = 1;
+		
 		private double currentPrice;
 		private double reductionRate;
 		private List<AID> buyers;
+		private AID winner;
+		private List<AID> losers;
 		
 		public AuctioneerBehaviour() {
 			currentPrice = initialPrice;
 			reductionRate = (initialPrice - reservePrice) * 0.1;
 			buyers = new ArrayList<>();
+			losers = new ArrayList<>();
 			
 			registerFirstState(new SearchBuyersBehaviour(), "searching for buyers");
 			registerState(new InformBuyersBehaviour(), "inform buyers");
 			registerState(new CallBuyersBehaviour(), "call for proposal");
+			registerState(new ReceiveProposalsBehaviour(), "receiving proposals");
 			
 			/* Empty state only to simulate transition. 
 			 * Will be removed when proper end states are implemented.
@@ -105,7 +115,9 @@ public class AuctioneerAgent extends Agent {
 			
 			registerDefaultTransition("searching for buyers", "inform buyers");
 			registerDefaultTransition("inform buyers", "call for proposal");
-			registerDefaultTransition("call for proposal", "ending auction");
+			registerDefaultTransition("call for proposal", "receiving proposals");
+			registerTransition("receiving proposals", "call for proposal", noWinner);
+			registerTransition("receiving proposals", "ending auction", hasWinner);
 		}
 		
 		/*
@@ -176,6 +188,55 @@ public class AuctioneerAgent extends Agent {
 					System.out.println("Sending CFP to [" + buyer.getLocalName() +"]");
 				}
 				myAgent.send(cfp);
+			}
+		}
+		
+		/*
+		 * Waits for response to the CFP from all buyers.
+		 * Having a winner proceeds to accept the proposal;
+		 * Otherwise proceeds to reducing the value.
+		 */
+		private class ReceiveProposalsBehaviour extends Behaviour {
+			private static final long serialVersionUID = -1158186911294968390L;
+			private int transitionStatus = noWinner;
+			private int responsesReceived = 0;
+
+			@Override
+			public void action() {
+				MessageTemplate proposeTemplate = MessageTemplate.MatchPerformative(ACLMessage.PROPOSE);
+				MessageTemplate refuseTemplate = MessageTemplate.MatchPerformative(ACLMessage.REFUSE);
+				MessageTemplate messageTemplate = MessageTemplate.or(proposeTemplate, refuseTemplate);
+				ACLMessage cfpResponse = myAgent.receive(messageTemplate);
+				
+				if (cfpResponse != null) {
+					// First response wins the auction
+					if (cfpResponse.getPerformative() == ACLMessage.PROPOSE) {
+						if (winner == null) {
+							winner = cfpResponse.getSender();
+							transitionStatus = hasWinner;
+							System.out.println("Winner is [" + cfpResponse.getSender().getName() + "]");
+						} else {
+							losers.add(cfpResponse.getSender());
+							System.out.println("[" + cfpResponse.getSender().getName() + "] didn't make"
+									+ " it on time! Better luck next auction!");
+						}
+					}
+					responsesReceived++;
+					System.out.println("Buyer [" + cfpResponse.getSender().getName() + "] answered with "
+							+ ACLMessage.getPerformative(cfpResponse.getPerformative()));
+				} else {
+					block();
+				}
+			}
+
+			@Override
+			public boolean done() {
+				return responsesReceived == buyers.size();
+			}
+
+			@Override
+			public int onEnd() {
+				return transitionStatus;
 			}
 		}
 	}
