@@ -84,6 +84,8 @@ public class AuctioneerAgent extends Agent {
 		// Constants for transition states
 		private final int noWinner = 0;
 		private final int hasWinner = 1;
+		private final int validPrice = 2;
+		private final int belowReserve = 3;
 		
 		private double currentPrice;
 		private double reductionRate;
@@ -102,6 +104,7 @@ public class AuctioneerAgent extends Agent {
 			registerState(new CallBuyersBehaviour(), "call for proposal");
 			registerState(new ReceiveProposalsBehaviour(), "receiving proposals");
 			registerState(new AcceptProposalBehaviour(), "accepting proposal");
+			registerState(new ReducePriceBehaviour(), "reducing price");
 			
 			/* Empty state only to simulate transition. 
 			 * Will be removed when proper end states are implemented.
@@ -117,8 +120,10 @@ public class AuctioneerAgent extends Agent {
 			registerDefaultTransition("searching for buyers", "inform buyers");
 			registerDefaultTransition("inform buyers", "call for proposal");
 			registerDefaultTransition("call for proposal", "receiving proposals");
-			registerTransition("receiving proposals", "call for proposal", noWinner);
+			registerTransition("receiving proposals", "reducing price", noWinner);
 			registerTransition("receiving proposals", "accepting proposal", hasWinner);
+			registerTransition("reducing price", "call for proposal", validPrice);
+			registerTransition("reducing price", "ending auction", belowReserve);
 			registerDefaultTransition("accepting proposal", "ending auction");
 		}
 		
@@ -226,7 +231,7 @@ public class AuctioneerAgent extends Agent {
 					responsesReceived++;
 					System.out.println("Buyer [" + cfpResponse.getSender().getName() + "] answered with "
 							+ ACLMessage.getPerformative(cfpResponse.getPerformative()));
-				} else {
+				} else { 
 					block();
 				}
 			}
@@ -238,6 +243,8 @@ public class AuctioneerAgent extends Agent {
 
 			@Override
 			public int onEnd() {
+				// Resetting number of responses in case the behaviour is executed again
+				responsesReceived = 0;
 				return transitionStatus;
 			}
 		}
@@ -265,7 +272,33 @@ public class AuctioneerAgent extends Agent {
 				}
 				myAgent.send(rejectMessage);
 			}
+		}
+		
+		/*
+		 * If there were no proposals, reduce price and send new CFP.
+		 * If the new price hits the reserve value, end auction without winners.
+		 */
+		private class ReducePriceBehaviour extends OneShotBehaviour {
+			private static final long serialVersionUID = -8146086081135872832L;
 			
+			private int transitionStatus = validPrice;
+			
+			@Override
+			public void action() {
+				currentPrice -= reductionRate;
+				System.out.println("No bids this round. Lowering price to: " + currentPrice);
+				System.out.println("Reserve price is " + reservePrice);
+				
+				if (currentPrice < reservePrice) {
+					transitionStatus = belowReserve;
+					System.out.println("Hit reserve value! Ending auction...");
+				}
+			}
+
+			@Override
+			public int onEnd() {
+				return transitionStatus;
+			}
 		}
 	}
 }
