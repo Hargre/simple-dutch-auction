@@ -221,11 +221,8 @@ public class AuctioneerAgent extends Agent {
 						if (winner == null) {
 							winner = cfpResponse.getSender();
 							transitionStatus = hasWinner;
-							System.out.println("Winner is [" + cfpResponse.getSender().getName() + "]");
 						} else {
 							losers.add(cfpResponse.getSender());
-							System.out.println("[" + cfpResponse.getSender().getName() + "] didn't make"
-									+ " it on time! Better luck next auction!");
 						}
 					}
 					responsesReceived++;

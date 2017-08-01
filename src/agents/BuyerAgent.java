@@ -77,6 +77,7 @@ public class BuyerAgent extends Agent {
 		public BuyerBehaviour() {
 			registerFirstState(new WaitAuctionBehaviour(), "waiting for auction");
 			registerState(new ReceiveCfpBehaviour(), "waiting for cfp");
+			registerState(new ReceiveReplyBehaviour(), "waiting for reply");
 			
 			/* Empty state only to simulate transition. 
 			 * Will be removed when proper end states are implemented.
@@ -91,8 +92,9 @@ public class BuyerAgent extends Agent {
 			
 			registerDefaultTransition("waiting for auction", "waiting for cfp");
 			registerTransition("waiting for cfp", "ending auction", noBuyers);
-			registerTransition("waiting for cfp", "ending auction", sendProposal); // TODO: receive proposal response
+			registerTransition("waiting for cfp", "waiting for reply", sendProposal); 
 			registerTransition("waiting for cfp", "waiting for cfp", highPrice);
+			registerDefaultTransition("waiting for reply", "ending auction");
 		}
 		
 		/*
@@ -182,6 +184,40 @@ public class BuyerAgent extends Agent {
 			@Override
 			public int onEnd() {
 				return transitionStatus;
+			}
+		}
+		
+		/*
+		 * Waits for an answer from the auctioneer about the proposal made.
+		 */
+		private class ReceiveReplyBehaviour extends Behaviour {
+			private static final long serialVersionUID = -8822219887935887052L;
+			
+			private boolean receivedReply = false;
+			private MessageTemplate acceptTemplate = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
+			private MessageTemplate rejectTemplate = MessageTemplate.MatchPerformative(ACLMessage.REJECT_PROPOSAL);
+			private MessageTemplate messageTemplate = MessageTemplate.or(acceptTemplate, rejectTemplate);
+			
+			@Override
+			public void action() {
+				ACLMessage replyMessage = myAgent.receive(messageTemplate);
+				if (replyMessage != null) {
+					receivedReply = true;
+					switch(replyMessage.getPerformative()) {
+						case ACLMessage.ACCEPT_PROPOSAL:
+							System.out.println(myAgent.getLocalName() + " wins the auction!");
+							break;
+						case ACLMessage.REJECT_PROPOSAL:
+							System.out.println(myAgent.getLocalName() + " didn't make it on time... "
+									+ "better luck in the next one!");
+							break;
+					}
+				}
+			}
+			
+			@Override
+			public boolean done() {
+				return receivedReply;
 			}
 		}
 	}
