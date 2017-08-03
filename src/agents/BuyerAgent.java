@@ -78,17 +78,7 @@ public class BuyerAgent extends Agent {
 			registerFirstState(new WaitAuctionBehaviour(), "waiting for auction");
 			registerState(new ReceiveCfpBehaviour(), "waiting for cfp");
 			registerState(new ReceiveReplyBehaviour(), "waiting for reply");
-			
-			/* Empty state only to simulate transition. 
-			 * Will be removed when proper end states are implemented.
-			 */
-			registerLastState(new OneShotBehaviour() {
-				private static final long serialVersionUID = 3438209180132381071L;
-
-				@Override
-				public void action() {
-				}
-			}, "ending auction");
+			registerLastState(new AuctionFinishedBehaviour(), "ending auction");
 			
 			registerDefaultTransition("waiting for auction", "waiting for cfp");
 			registerTransition("waiting for cfp", "ending auction", noBuyers);
@@ -124,6 +114,9 @@ public class BuyerAgent extends Agent {
 			}
 		}
 		
+		/*
+		 * Waits for a CFP and replies accordingly depending on the price given.
+		 */
 		private class ReceiveCfpBehaviour extends Behaviour {
 			private static final long serialVersionUID = 289640441682152767L;
 			
@@ -218,6 +211,18 @@ public class BuyerAgent extends Agent {
 			@Override
 			public boolean done() {
 				return receivedReply;
+			}
+		}
+		
+		/*
+		 * Takes down the agent after the auction has finished.
+		 */
+		private class AuctionFinishedBehaviour extends OneShotBehaviour {
+			private static final long serialVersionUID = 2484885085847142906L;
+
+			@Override
+			public void action() {
+				myAgent.doDelete();
 			}
 		}
 	}

@@ -105,17 +105,7 @@ public class AuctioneerAgent extends Agent {
 			registerState(new ReceiveProposalsBehaviour(), "receiving proposals");
 			registerState(new AcceptProposalBehaviour(), "accepting proposal");
 			registerState(new ReducePriceBehaviour(), "reducing price");
-			
-			/* Empty state only to simulate transition. 
-			 * Will be removed when proper end states are implemented.
-			 */
-			registerLastState(new OneShotBehaviour() {
-				private static final long serialVersionUID = 3438209180132381071L;
-
-				@Override
-				public void action() {
-				}
-			}, "ending auction");
+			registerLastState(new EndingAuctionBehaviour(), "ending auction");
 			
 			registerDefaultTransition("searching for buyers", "inform buyers");
 			registerDefaultTransition("inform buyers", "call for proposal");
@@ -296,6 +286,32 @@ public class AuctioneerAgent extends Agent {
 			public int onEnd() {
 				return transitionStatus;
 			}
+		}
+		
+		/*
+		 * Ends the auction whether there was a winner or not and inform the buyers.
+		 */
+		private class EndingAuctionBehaviour extends OneShotBehaviour {
+			private static final long serialVersionUID = 7282441008068871882L;
+
+			@Override
+			public void action() {
+				ACLMessage informMessage = new ACLMessage(ACLMessage.INFORM);
+				informMessage.setProtocol(FIPANames.InteractionProtocol.FIPA_DUTCH_AUCTION);
+				for (AID buyer : buyers) {
+					informMessage.addReceiver(buyer);
+				}
+				myAgent.send(informMessage);
+				
+				if (winner != null) {
+					System.out.println("Auction finished with " + winner.getLocalName() + 
+							" as the winner!");
+				} else {
+					System.out.println("Auction finished without winners..");
+				}
+				
+				myAgent.doDelete();
+			}		
 		}
 	}
 }
